@@ -1,13 +1,15 @@
 var http = require('http'),
-    faye = require('faye');
-    sys = require("sys"); 
-    url = require("url");
-    path = require("path");
-    fs = require("fs");
+    faye = require('faye'),
+    sys = require("sys"),
+    url = require("url"),
+    path = require("path"),
+    fs = require("fs"),
+    paperboy = require("paperboy"),
+    WEBROOT = path.join(path.dirname(__filename), 'public');
         
 var bayeux = new faye.NodeAdapter({
-  mount:    '/faye',
-  timeout:  45
+	mount:    '/faye',
+	timeout:  45
 });
 
 // The server's builtin Faye Client
@@ -17,9 +19,9 @@ var events = bayeux.getClient()
 var server = http.createServer(function(request, response) {
 
   if(request.method == "PUT") {
-
+	
     // Extract channel name 
-    var channel = url.parse(request.url).pathname.substr(1);
+  	var channel = url.parse(request.url).pathname.substr(1);
     
     console.log("Opening channel " + channel);
     
@@ -32,16 +34,19 @@ var server = http.createServer(function(request, response) {
     });
   } 
   else {
-      fs.readFile("index.htm", "binary", function(err, file) {  
-          if(err) {  
-              response.writeHeader(500, {"Content-Type": "text/plain"});  
-              response.write(err + "\n");  
-              return response.end();  
-          }  
-          response.writeHeader(200);  
-          response.write(file, "binary");  
-          response.end();  
-      });  
+      paperboy.deliver(WEBROOT, request, response)
+  	    .otherwise(function() {
+  	      fs.readFile("public/index.htm", "binary", function(err, file) {  
+      	      if(err) {  
+      	      	  response.writeHeader(500, {"Content-Type": "text/plain"});  
+      	          response.write(err + "\n");  
+      	          return response.end();  
+      	      }  
+      	      response.writeHeader(200);  
+      	      response.write(file, "binary");  
+      	      response.end();  
+      	  });
+  	  });  
   };
 });
 
